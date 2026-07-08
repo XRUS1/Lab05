@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Dragones AR</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { background: #0a0a0a; color: #eee; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; width: 100vw; height: 100vh; }
+  #ui { position: absolute; top: 0; left: 0; z-index: 10; padding: 1.2em; max-width: 400px; background: rgba(0,0,0,0.82); backdrop-filter: blur(10px); border-radius: 0 0 16px 0; border-right: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); }
+  h1 { font-size: 1.15em; color: #50a8fc; margin-bottom: 0.4em; }
+  p { font-size: 0.8em; color: #aaa; margin-bottom: 1em; line-height: 1.5; }
+  #targets { display: flex; gap: 10px; margin-bottom: 1em; flex-wrap: wrap; }
+  .target { width: 90px; height: 70px; border-radius: 6px; border: 2px solid #333; background: #111; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+  .target.ready { border-color: #50a8fc; }
+  .target img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .target-label { position: absolute; bottom: 3px; left: 3px; font-size: 9px; color: #fff; background: rgba(0,0,0,0.7); padding: 2px 5px; border-radius: 3px; pointer-events: none; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  button { padding: 0.75em 1.5em; background: transparent; color: #50a8fc; border: 2px solid #50a8fc; border-radius: 6px; font-size: 0.95em; cursor: pointer; transition: all 0.15s; }
+  button:hover:not(:disabled) { background: #50a8fc; color: #000; }
+  button:disabled { opacity: 0.3; border-color: #444; color: #666; cursor: not-allowed; }
+  #status { margin-top: 0.8em; font-size: 0.85em; color: #ccc; min-height: 1.4em; }
+  #status.ok { color: #51cf66; }
+  #status.err { color: #ff6b6b; }
+  #status.warn { color: #ffd43b; }
+  #status.info { color: #74c0fc; }
+  #ar-overlay { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 20; background: rgba(0,0,0,0.75); padding: 10px 20px; border-radius: 24px; font-size: 0.85em; color: #fff; pointer-events: none; display: none; border: 1px solid rgba(255,255,255,0.15); }
+  #xr-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+  @media (max-width: 480px) { #ui { max-width: 100%; border-radius: 0; padding: 1em; } h1 { font-size: 1em; } }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="ui">
+  <h1>Dragones AR</h1>
+  <p>Apunta la camara a una tarjeta para ver el dragon.</p>
+  <div id="targets"></div>
+  <div class="btn-row">
+    <button id="btnAR" disabled>Iniciar AR</button>
+    <button id="btn3D" disabled>Ver en 3D</button>
+  </div>
+  <div id="status">Cargando...</div>
+</div>
+
+<div id="ar-overlay"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const TARGETS = [
+  {
+    nombre: 'Dragon Azul',
+    tarjeta: './images/tarjeta.png',
+    modelo: './models/Blue.glb',
+    animacion: 'Idle01',
+    fallbackAnimacion: 'Idle01'
+  },
+  {
+    nombre: 'Dragon Rojo',
+    tarjeta: './images/tarjeta2.png',
+    modelo: './models/Red.glb',
+    animacion: 'Idle01',
+    fallbackAnimacion: 'Idle01'
+  }
+];
+
+const btnAR = document.getElementById('btnAR');
+const btn3D = document.getElementById('btn3D');
+const statusEl = document.getElementById('status');
+const targetsDiv = document.getElementById('targets');
+const arOverlay = document.getElementById('ar-overlay');
+
+let targetBitmaps = [];
+let modelosData = [];
+let currentSession = null;
+let currentRenderer = null;
+let cleanupFns = [];
+
+function cargarTarjetas() {
+  return Promise.all(TARGETS.map((t, i) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const wrap = document.createElement('div');
+      wrap.className = 'target ready';
+      const thumb = document.createElement('img');
+      thumb.src = t.tarjeta;
+      thumb.alt = t.nombre;
+      const label = document.createElement('span');
+      label.className = 'target-label';
+      label.textContent = t.nombre;
+      wrap.appendChild(thumb);
+      wrap.appendChild(label);
+      targetsDiv.appendChild(wrap);
+      createImageBitmap(img).then(bmp => resolve({ bitmap: bmp, index: i })).catch(reject);
+    };
+    img.onerror = () => reject(new Error(`No se pudo cargar: ${t.tarjeta}`));
+    img.src = t.tarjeta;
+  })));
+}
+
+function cargarModelos() {
+  const loader = new GLTFLoader();
+  return Promise.all(TARGETS.map((t, i) => new Promise((resolve, reject) => {
+    loader.load(t.modelo,
+      (gltf) => resolve({ gltf, nombre: t.nombre, index: i, animacionBuscada: t.animacion, fallbackAnimacion: t.fallbackAnimacion }),
+      (xhr) => { if (xhr.total) statusEl.textContent = `Descargando ${t.nombre}... ${Math.round((xhr.loaded/xhr.total)*100)}%`; },
+      (err) => reject(new Error(`No se pudo cargar ${t.modelo}: ${err.message}`))
+    );
+  })));
+}
+
+function crearModelo(data) {
+  const model = data.gltf.scene.clone();
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const s = 0.12 / maxDim;
+  model.scale.setScalar(s);
+  const center = box.getCenter(new THREE.Vector3());
+  model.position.sub(center.multiplyScalar(s));
+  model.position.y += size.y * s * 0.5;
+  let mixer = null, animName = null;
+  if (data.gltf.animations?.length > 0) {
+    mixer = new THREE.AnimationMixer(model);
+    let clip = data.gltf.animations.find(a => a.name === data.animacionBuscada);
+    if (!clip && data.fallbackAnimacion) clip = data.gltf.animations.find(a => a.name === data.fallbackAnimacion);
+    if (!clip) clip = data.gltf.animations[0];
+    animName = clip.name;
+    if (clip.name !== data.animacionBuscada) {
+      console.warn(`[${data.nombre}] "${data.animacionBuscada}" no encontrada. Usando: "${animName}"`);
+      console.log(`[${data.nombre}] Disponibles:`, data.gltf.animations.map(a => a.name));
+    }
+    mixer.clipAction(clip).play();
+  }
+  return { model, mixer, animName };
+}
+
+async function init() {
+  try {
+    statusEl.textContent = 'Cargando tarjetas...';
+    const tarjetas = await cargarTarjetas();
+    targetBitmaps = tarjetas.map(t => t.bitmap);
+    statusEl.textContent = 'Descargando modelos...';
+    modelosData = await cargarModelos();
+    statusEl.textContent = 'Listo. Toca "Iniciar AR" o "Ver en 3D".';
+    statusEl.className = 'ok';
+    btnAR.disabled = false;
+    btn3D.disabled = false;
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err.message;
+    statusEl.className = 'err';
+    console.error(err);
+  }
+}
+
+init();
+
+btn3D.addEventListener('click', () => {
+  if (currentRenderer) cleanupScene();
+  btnAR.disabled = true; btn3D.disabled = true;
+  statusEl.textContent = 'Modo 3D activo. Arrastra para rotar.';
+  statusEl.className = 'info'; arOverlay.style.display = 'none';
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.domElement.id = 'xr-canvas';
+  renderer.domElement.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;';
+  document.body.appendChild(renderer.domElement); currentRenderer = renderer;
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x0a0a12);
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.01, 100);
+  camera.position.set(0, 1.2, 2.5);
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; controls.dampingFactor = 0.05; controls.target.set(0, 0.3, 0);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.5));
+  const dl = new THREE.DirectionalLight(0xffffff, 2); dl.position.set(5, 10, 7); scene.add(dl);
+  const grid = new THREE.GridHelper(4, 20, 0x333333, 0x111111); scene.add(grid);
+  const mixers = [];
+  for (let i = 0; i < modelosData.length; i++) {
+    const { model, mixer } = crearModelo(modelosData[i]);
+    model.position.x = (i - 0.5) * 1.5; scene.add(model);
+    if (mixer) mixers.push(mixer);
+  }
+  const clock = new THREE.Clock(); let animId;
+  function animate() { animId = requestAnimationFrame(animate); mixers.forEach(m => m.update(clock.getDelta())); controls.update(); renderer.render(scene, camera); }
+  animate();
+  const onResize = () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
+  window.addEventListener('resize', onResize);
+  cleanupFns.push(() => { window.removeEventListener('resize', onResize); cancelAnimationFrame(animId); controls.dispose(); mixers.forEach(m => m.stopAllAction()); scene.traverse(obj => { if (obj.geometry) obj.geometry.dispose(); if (obj.material) { if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose()); else obj.material.dispose(); } if (obj.texture) obj.texture.dispose(); }); renderer.dispose(); if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement); btnAR.disabled = false; btn3D.disabled = false; statusEl.textContent = 'Finalizado.'; statusEl.className = ''; });
+});
+
+btnAR.addEventListener('click', async () => {
+  if (!navigator.xr) { statusEl.textContent = 'WebXR no disponible.'; statusEl.className = 'err'; return; }
+  try { const ok = await navigator.xr.isSessionSupported('immersive-ar'); if (!ok) { statusEl.textContent = 'AR no soportado. Necesitas Chrome Android con ARCore.'; statusEl.className = 'err'; return; } } catch (e) { statusEl.textContent = 'Error: ' + e.message; statusEl.className = 'err'; return; }
+  if (currentRenderer) cleanupScene();
+  btnAR.disabled = true; btn3D.disabled = true; statusEl.textContent = 'Iniciando AR...'; statusEl.className = 'info';
+  try {
+    const session = await navigator.xr.requestSession('immersive-ar', { requiredFeatures: ['image-tracking'], trackedImages: targetBitmaps.map((bmp, i) => ({ image: bmp, widthInMeters: 0.18 })) });
+    currentSession = session;
+    statusEl.textContent = 'AR activo. Apunta a una tarjeta.'; statusEl.className = 'ok'; arOverlay.style.display = 'block'; arOverlay.textContent = 'Buscando...';
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.xr.enabled = true; renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.domElement.id = 'xr-canvas'; renderer.domElement.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;';
+    document.body.appendChild(renderer.domElement); currentRenderer = renderer;
+    const scene = new THREE.Scene(); const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.01, 100);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
+    const dl = new THREE.DirectionalLight(0xffffff, 1.5); dl.position.set(5, 10, 7); scene.add(dl);
+    const grupos = [], mixers = [];
+    for (const data of modelosData) { const { model, mixer } = crearModelo(data); const grupo = new THREE.Group(); grupo.add(model); grupo.visible = false; scene.add(grupo); grupos.push(grupo); mixers.push(mixer); }
+    const clock = new THREE.Clock(); await renderer.xr.setSession(session);
+    const refSpace = await session.requestReferenceSpace('local');
+    renderer.setAnimationLoop((time, frame) => {
+      const delta = clock.getDelta(); mixers.forEach(m => { if (m) m.update(delta); });
+      if (!frame) { renderer.render(scene, camera); return; }
+      grupos.forEach(g => g.visible = false); let anyTracked = false;
+      if (frame.getImageTrackingResults) {
+        for (const result of frame.getImageTrackingResults()) {
+          if (result.trackingState === 'tracked' || result.trackingState === 'emulated') {
+            const pose = frame.getPose(result.imageSpace, refSpace);
+            if (pose) { const t = pose.transform; const g = grupos[result.index]; g.position.set(t.position.x, t.position.y, t.position.z); g.quaternion.set(t.orientation.x, t.orientation.y, t.orientation.z, t.orientation.w); g.visible = true; anyTracked = true; statusEl.textContent = '✓ ' + TARGETS[result.index].nombre; statusEl.className = 'ok'; arOverlay.textContent = '✓ ' + TARGETS[result.index].nombre; }
+          }
+        }
+      }
+      if (!anyTracked) { statusEl.textContent = 'Buscando...'; statusEl.className = 'warn'; arOverlay.textContent = 'Buscando...'; }
+      renderer.render(scene, camera);
+    });
+    const onResize = () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); };
+    window.addEventListener('resize', onResize);
+    const onEnd = () => cleanupScene();
+    session.addEventListener('end', onEnd);
+    cleanupFns.push(() => { window.removeEventListener('resize', onResize); session.removeEventListener('end', onEnd); renderer.setAnimationLoop(null); mixers.forEach(m => { if (m) m.stopAllAction(); }); scene.traverse(obj => { if (obj.geometry) obj.geometry.dispose(); if (obj.material) { if (Array.isArray(obj.material)) obj.material.forEach(mat => mat.dispose()); else obj.material.dispose(); } if (obj.texture) obj.texture.dispose(); }); renderer.dispose(); if (renderer.domElement && renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement); if (session && !session.ended) { try { session.end(); } catch (e) {} } currentSession = null; currentRenderer = null; btnAR.disabled = false; btn3D.disabled = false; statusEl.textContent = 'Finalizado.'; statusEl.className = ''; arOverlay.style.display = 'none'; });
+  } catch (err) { statusEl.textContent = 'Error AR: ' + err.message; statusEl.className = 'err'; console.error(err); btnAR.disabled = false; btn3D.disabled = false; }
+});
+
+function cleanupScene() { cleanupFns.forEach(fn => { try { fn(); } catch (e) {} }); cleanupFns = []; }
+</script>
+</body>
+</html>
