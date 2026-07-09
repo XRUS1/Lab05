@@ -335,6 +335,21 @@ btnExitAR.addEventListener('click', () => {
   cleanupAR();
 });
 
+async function obtenerRefSpace(session) {
+  const tipos = ['local-floor', 'local', 'viewer'];
+  for (const tipo of tipos) {
+    try {
+      console.log('[AR] Intentando refSpace:', tipo);
+      const refSpace = await session.requestReferenceSpace(tipo);
+      console.log('[AR] refSpace OK:', tipo);
+      return { refSpace, tipo };
+    } catch (e) {
+      console.warn('[AR] refSpace falló:', tipo, e.message);
+    }
+  }
+  throw new Error('Ningún reference space soportado');
+}
+
 btnAR.addEventListener('click', async () => {
   console.log('[AR] btnAR click');
 
@@ -384,7 +399,6 @@ btnAR.addEventListener('click', async () => {
 
   let session;
   try {
-    // Usar hit-test como OPTIONAL, no required. Algunos dispositivos no lo soportan.
     session = await navigator.xr.requestSession('immersive-ar', {
       requiredFeatures: [],
       optionalFeatures: ['hit-test', 'dom-overlay'],
@@ -393,7 +407,6 @@ btnAR.addEventListener('click', async () => {
     console.log('[AR] Sesión creada correctamente');
   } catch (err) {
     console.error('[AR] requestSession error:', err);
-    // Si falla con optionalFeatures, intentar sin nada
     if (err.message && (err.message.includes('could not be fulfilled') || err.message.includes('invalid'))) {
       try {
         console.log('[AR] Reintentando sin features...');
@@ -440,7 +453,8 @@ btnAR.addEventListener('click', async () => {
 
   arState = {
     session, renderer, scene, camera, model, mixer, mixers, clock,
-    hitTestSource: null, hitTestResults: [], refSpace: null, placed: false, cleaning: false, errorMsg: null
+    hitTestSource: null, hitTestResults: [], refSpace: null, refSpaceType: null,
+    placed: false, cleaning: false, errorMsg: null
   };
 
   try {
@@ -456,13 +470,14 @@ btnAR.addEventListener('click', async () => {
     return;
   }
 
+  let refSpaceResult;
   try {
-    console.log('[AR] requestReferenceSpace local...');
-    arState.refSpace = await session.requestReferenceSpace('local');
-    console.log('[AR] refSpace OK');
+    refSpaceResult = await obtenerRefSpace(session);
+    arState.refSpace = refSpaceResult.refSpace;
+    arState.refSpaceType = refSpaceResult.tipo;
   } catch (err) {
-    console.error('[AR] refSpace error:', err);
-    arState.errorMsg = 'Error espacio de referencia: ' + err.message;
+    console.error('[AR] No se pudo obtener ningún refSpace:', err);
+    arState.errorMsg = 'Error: ' + err.message;
     statusEl.textContent = arState.errorMsg;
     statusEl.className = 'err';
     cleanupAR();
@@ -481,12 +496,12 @@ btnAR.addEventListener('click', async () => {
     hasHitTest = false;
   }
 
-  console.log('[AR] Escena configurada. hasHitTest=' + hasHitTest);
+  console.log('[AR] Escena configurada. refSpace=' + arState.refSpaceType + ' hasHitTest=' + hasHitTest);
   btnExitAR.style.display = 'block';
   arOverlay.style.display = 'block';
   uiText.innerHTML = hasHitTest
     ? 'Dentro de AR. Puedes <b>cambiar de dragón</b> tocando otra tarjeta. Toca la pantalla para colocar o mover.'
-    : 'Dentro de AR. <b>Hit-test no disponible</b> en este dispositivo. El dragón aparecerá frente a ti.';
+    : 'Dentro de AR. <b>Hit-test no disponible</b>. El dragón aparecerá frente a ti.';
   statusEl.textContent = hasHitTest ? 'AR activo. Mueve el dispositivo buscando una superficie.' : 'AR activo (sin hit-test).';
   statusEl.className = 'ok';
 
