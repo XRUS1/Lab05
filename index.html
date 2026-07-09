@@ -384,7 +384,6 @@ btnAR.addEventListener('click', async () => {
 
   let session;
   try {
-    // EXACTAMENTE como el ejemplo oficial: 'local' y 'hit-test' como requiredFeatures
     session = await navigator.xr.requestSession('immersive-ar', {
       requiredFeatures: ['local', 'hit-test']
     });
@@ -428,6 +427,17 @@ btnAR.addEventListener('click', async () => {
   };
 
   try {
+    console.log('[AR] Creando XRWebGLLayer manualmente...');
+    const gl = renderer.getContext();
+    await gl.makeXRCompatible();
+    const baseLayer = new XRWebGLLayer(session, gl);
+    session.updateRenderState({ baseLayer });
+    console.log('[AR] XRWebGLLayer creado manualmente OK');
+  } catch (err) {
+    console.error('[AR] Error creando XRWebGLLayer:', err);
+  }
+
+  try {
     console.log('[AR] setSession...');
     await renderer.xr.setSession(session);
     console.log('[AR] setSession OK');
@@ -440,12 +450,6 @@ btnAR.addEventListener('click', async () => {
     return;
   }
 
-  // EXACTAMENTE como el ejemplo oficial:
-  // 1. Pedir viewer space
-  // 2. Crear hitTestSource con viewer space
-  // 3. Pedir local space
-  // 4. Iniciar animation frame
-
   try {
     console.log('[AR] requestReferenceSpace viewer...');
     const viewerSpace = await session.requestReferenceSpace('viewer');
@@ -456,7 +460,6 @@ btnAR.addEventListener('click', async () => {
     console.log('[AR] hitTestSource OK');
   } catch (err) {
     console.warn('[AR] hit-test no disponible:', err.message);
-    // No es fatal, seguimos sin hit-test
   }
 
   try {
