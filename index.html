@@ -111,31 +111,25 @@ function cargarModelos() {
 }
 
 function crearModelo(data) {
-  // CONTENEDOR: aquí va la posición en el mundo AR
   const container = new THREE.Group();
-  
-  // MODELO: aquí va la escala y la animación
   const model = data.gltf.scene.clone();
   
-  // Medimos y escachamos bien chiquito
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   
-  // MUCHO MÁS CHICO: 0.01 (antes 0.12, luego 0.02)
-  const s = 0.01 / maxDim;
+  // ANTES: 0.01 — AHORA: 0.002 (animalazo → chihuahua)
+  const s = 0.002 / maxDim;
+  
   model.scale.setScalar(s);
   
-  // Centramos el modelo dentro de su propio espacio local
   const center = box.getCenter(new THREE.Vector3());
   model.position.x = -center.x * s;
-  model.position.y = -center.y * s;  // Centramos en Y local también
+  model.position.y = -center.y * s;
   model.position.z = -center.z * s;
   
-  // Metemos el modelo dentro del contenedor
   container.add(model);
   
-  // Animación sobre el modelo (hijos), NO sobre el contenedor
   let mixer = null;
   if (data.gltf.animations && data.gltf.animations.length > 0) {
     mixer = new THREE.AnimationMixer(model);
