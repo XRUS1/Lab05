@@ -171,7 +171,7 @@ function iniciarAR() {
   // Nave espacial (sin animación, posición fija)
   const loaderNave = new GLTFLoader();
   loaderNave.load(
-    './models/Nave.glb',
+    './models/gltf/Nave.gltf',
     function (gltf) {
       gltf.scene.scale.set(0.003, 0.003, 0.003);
       gltf.scene.position.set(-0.8, 0.3, -1.5);
