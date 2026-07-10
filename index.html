@@ -52,8 +52,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // ============================================================
 // AJUSTES RÁPIDOS — SOLO CAMBIA ESTOS DOS NÚMEROS
 // ============================================================
-const ESCALA_DRAGON = 0.001;   // SI ESTÁ MUY GRANDE: 0.005, 0.001, 0.0005
-const ALTURA_DRAGON = -1.5;    // SI ESTÁ ARRIBA EN EL TECHO: -0.5, -1.0, -1.5
+const ESCALA_DRAGON = 1.0;   // SI ESTÁ MUY GRANDE: 0.005, 0.001, 0.0005
+const ALTURA_DRAGON = -0.3;    // SI ESTÁ ARRIBA EN EL TECHO: -0.5, -1.0, -1.5
 // ============================================================
 
 const TARGETS = [
@@ -198,7 +198,7 @@ function iniciarAR() {
   const { container, mixer } = crearModelo(data);
   
   // Usa la altura que ajustes arriba
-  container.position.set(2.0, ALTURA_DRAGON, -1.5);
+  container.position.set(0.5, -0.3, -1.0);
   
   scene.add(container);
   dragonContainer = container;
