@@ -116,13 +116,16 @@ function crearModelo(data) {
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   
-  // ESCALA REDUCIDA A LA MITAD (0.06 en vez de 0.12)
-  const s = 0.06 / maxDim;
+  // MUCHO MÁS PEQUEÑO: 0.02 en vez de 0.12 (6 veces más chico)
+  const s = 0.02 / maxDim;
   
   model.scale.setScalar(s);
+  
+  // Solo centramos en X y Z, NO en Y (para no empujarlo arriba)
   const center = box.getCenter(new THREE.Vector3());
-  model.position.sub(center.multiplyScalar(s));
-  model.position.y += size.y * s * 0.5;
+  model.position.x -= center.x * s;
+  model.position.z -= center.z * s;
+  // NO tocamos Y aquí
 
   let mixer = null;
   if (data.gltf.animations && data.gltf.animations.length > 0) {
@@ -133,7 +136,8 @@ function crearModelo(data) {
   }
   return { model, mixer };
 }
-
+ 
+ 
 async function init() {
   try {
     statusEl.textContent = 'Cargando tarjetas...';
@@ -191,7 +195,7 @@ function iniciarAR() {
   const { model, mixer } = crearModelo(data);
   
   // X=0.8 (derecha), Y=0.3 (misma altura que la nave), Z=-1.5
-  model.position.set(0.8, 0.3, -1.5);
+  model.position.set(0.8, 0.0, -1.5);
   
   scene.add(model);
   dragonModel = model;
