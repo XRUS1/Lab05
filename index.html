@@ -52,8 +52,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // ============================================================
 // PALANCA DE ESCALA — prueba valores: 1, 0.5, 0.1, 0.05, 0.01
 // ============================================================
-const ESCALA_DRAGON = 0.05;   // ← cambia este número y prueba
- 
+const ESCALA_DRAGON = 0.05;
 // ============================================================
 
 const TARGETS = [
@@ -121,13 +120,9 @@ function crearModelo(data) {
   const container = new THREE.Group();
   const model = data.gltf.scene.clone();
   
-  // Aplica la escala que pongas arriba
   container.scale.set(ESCALA_DRAGON, ESCALA_DRAGON, ESCALA_DRAGON);
-  
-  // Rotación 180 como en Unity
   container.rotation.y = Math.PI;
 
-  // Centramos
   const box = new THREE.Box3().setFromObject(model);
   const center = box.getCenter(new THREE.Vector3());
   model.position.set(-center.x, -center.y, -center.z);
@@ -197,11 +192,11 @@ function iniciarAR() {
     }
   );
 
-  // DRAGÓN
+  // DRAGÓN — AVENTADO A LA DERECHA (x: 2.0 en vez de 0.8)
   const data = modelosData[selectedIndex];
   const { container, mixer } = crearModelo(data);
   
-  container.position.set(0.8, 0.3, -1.5);
+  container.position.set(2.0, 0.3, -1.5);  // ← antes era 0.8, ahora 2.0
   
   scene.add(container);
   dragonContainer = container;
