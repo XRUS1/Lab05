@@ -121,7 +121,7 @@ function crearModelo(data) {
   // ANTES: 0.01 — AHORA: 0.002 (animalazo → chihuahua)
   const s = 0.002 / maxDim;
   
-  model.scale.setScalar(0.0005);
+  model.scale.setScalar(0.0005); 
   
   const center = box.getCenter(new THREE.Vector3());
   model.position.x = -center.x * s;
