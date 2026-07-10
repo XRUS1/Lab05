@@ -60,7 +60,7 @@ const targetsDiv = document.getElementById('targets');
 
 let selectedIndex = -1;
 let modelosData = [];
-let dragonContainer = null;  // Group contenedor
+let dragonContainer = null;
 let dragonMixer = null;
 let scene, camera, renderer, clock;
 
@@ -114,25 +114,19 @@ function crearModelo(data) {
   const container = new THREE.Group();
   const model = data.gltf.scene.clone();
   
-  // IMPORTANTE: actualizar matrices antes de medir
-  model.updateMatrixWorld(true);
+  // Escala fija 0.1 como en Unity
+  container.scale.set(0.1, 0.1, 0.1);
   
+  // Rotación Y 180 como en Unity
+  container.rotation.y = Math.PI;
+
+  // Centramos
   const box = new THREE.Box3().setFromObject(model);
-  const size = box.getSize(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z);
-  
-  // ESCALA al CONTENEDOR (afecta TODO uniformemente, incluyendo hijos)
-  const s = 0.0005 / maxDim;
-  container.scale.setScalar(s);
-  
-  // Centramos el modelo localmente (sin escalar, el contenedor hace el resto)
   const center = box.getCenter(new THREE.Vector3());
-  model.position.x = -center.x;
-  model.position.y = -center.y;
-  model.position.z = -center.z;
+  model.position.set(-center.x, -center.y, -center.z);
   
   container.add(model);
-  
+
   let mixer = null;
   if (data.gltf.animations && data.gltf.animations.length > 0) {
     mixer = new THREE.AnimationMixer(model);
@@ -181,7 +175,7 @@ function iniciarAR() {
   light.position.set(1, 1, 1).normalize();
   scene.add(light);
 
-  // NAVE: SIN CAMBIOS
+  // NAVE: sin cambios
   const loaderNave = new GLTFLoader();
   loaderNave.load(
     './models/gltf/Nave.gltf',
@@ -196,13 +190,11 @@ function iniciarAR() {
     }
   );
 
-  // DRAGÓN: contenedor en la posición, modelo dentro con animación
+  // DRAGÓN
   const data = modelosData[selectedIndex];
   const { container, mixer } = crearModelo(data);
   
-  // Posicionamos el CONTENEDOR (no el modelo)
-  // X=0.8 derecha, Y=0.0 (más bajo), Z=-1.5
-  container.position.set(0.8, -0.5, -1.5);
+  container.position.set(0.8, 0.3, -1.5);
   
   scene.add(container);
   dragonContainer = container;
