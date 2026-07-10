@@ -114,19 +114,22 @@ function crearModelo(data) {
   const container = new THREE.Group();
   const model = data.gltf.scene.clone();
   
+  // IMPORTANTE: actualizar matrices antes de medir
+  model.updateMatrixWorld(true);
+  
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   
-  // ANTES: 0.01 — AHORA: 0.002 (animalazo → chihuahua)
-  const s = 0.002 / maxDim;
+  // ESCALA al CONTENEDOR (afecta TODO uniformemente, incluyendo hijos)
+  const s = 0.0005 / maxDim;
+  container.scale.setScalar(s);
   
-  model.scale.setScalar(0.0005); 
-  
+  // Centramos el modelo localmente (sin escalar, el contenedor hace el resto)
   const center = box.getCenter(new THREE.Vector3());
-  model.position.x = -center.x * s;
-  model.position.y = -center.y * s;
-  model.position.z = -center.z * s;
+  model.position.x = -center.x;
+  model.position.y = -center.y;
+  model.position.z = -center.z;
   
   container.add(model);
   
