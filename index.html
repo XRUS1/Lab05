@@ -115,7 +115,7 @@ function crearModelo(data) {
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
-  const s = 0.12 / maxDim;
+  const s = 0.06 / maxDim;
   model.scale.setScalar(s);
   const center = box.getCenter(new THREE.Vector3());
   model.position.sub(center.multiplyScalar(s));
@@ -174,7 +174,7 @@ function iniciarAR() {
     './models/gltf/Nave.gltf',
     function (gltf) {
       gltf.scene.scale.set(0.003, 0.003, 0.003);
-      gltf.scene.position.set(-0.8, 0.3, -1.5);
+      gltf.scene.position.set(0.8, 0.3, -1.5);
       scene.add(gltf.scene);
     },
     undefined,
