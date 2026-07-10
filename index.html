@@ -60,7 +60,7 @@ const targetsDiv = document.getElementById('targets');
 
 let selectedIndex = -1;
 let modelosData = [];
-let dragonModel = null;
+let dragonContainer = null;  // Group contenedor
 let dragonMixer = null;
 let scene, camera, renderer, clock;
 
@@ -111,22 +111,31 @@ function cargarModelos() {
 }
 
 function crearModelo(data) {
+  // CONTENEDOR: aquí va la posición en el mundo AR
+  const container = new THREE.Group();
+  
+  // MODELO: aquí va la escala y la animación
   const model = data.gltf.scene.clone();
+  
+  // Medimos y escachamos bien chiquito
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
   
-  // MUCHO MÁS PEQUEÑO: 0.02 en vez de 0.12 (6 veces más chico)
-  const s = 0.02 / maxDim;
-  
+  // MUCHO MÁS CHICO: 0.01 (antes 0.12, luego 0.02)
+  const s = 0.01 / maxDim;
   model.scale.setScalar(s);
   
-  // Solo centramos en X y Z, NO en Y (para no empujarlo arriba)
+  // Centramos el modelo dentro de su propio espacio local
   const center = box.getCenter(new THREE.Vector3());
-  model.position.x -= center.x * s;
-  model.position.z -= center.z * s;
-  // NO tocamos Y aquí
-
+  model.position.x = -center.x * s;
+  model.position.y = -center.y * s;  // Centramos en Y local también
+  model.position.z = -center.z * s;
+  
+  // Metemos el modelo dentro del contenedor
+  container.add(model);
+  
+  // Animación sobre el modelo (hijos), NO sobre el contenedor
   let mixer = null;
   if (data.gltf.animations && data.gltf.animations.length > 0) {
     mixer = new THREE.AnimationMixer(model);
@@ -134,10 +143,10 @@ function crearModelo(data) {
     if (!clip) clip = data.gltf.animations[0];
     mixer.clipAction(clip).play();
   }
-  return { model, mixer };
+  
+  return { container, mixer, model };
 }
- 
- 
+
 async function init() {
   try {
     statusEl.textContent = 'Cargando tarjetas...';
@@ -175,7 +184,7 @@ function iniciarAR() {
   light.position.set(1, 1, 1).normalize();
   scene.add(light);
 
-  // NAVE: SIN CAMBIOS, IGUAL QUE ESTABA
+  // NAVE: SIN CAMBIOS
   const loaderNave = new GLTFLoader();
   loaderNave.load(
     './models/gltf/Nave.gltf',
@@ -190,15 +199,16 @@ function iniciarAR() {
     }
   );
 
-  // DRAGÓN: MÁS PEQUEÑO Y A LA MISMA ALTURA Y QUE LA NAVE
+  // DRAGÓN: contenedor en la posición, modelo dentro con animación
   const data = modelosData[selectedIndex];
-  const { model, mixer } = crearModelo(data);
+  const { container, mixer } = crearModelo(data);
   
-  // X=0.8 (derecha), Y=0.3 (misma altura que la nave), Z=-1.5
-  model.position.set(0.8, 0.0, -1.5);
+  // Posicionamos el CONTENEDOR (no el modelo)
+  // X=0.8 derecha, Y=0.0 (más bajo), Z=-1.5
+  container.position.set(0.8, 0.0, -1.5);
   
-  scene.add(model);
-  dragonModel = model;
+  scene.add(container);
+  dragonContainer = container;
   dragonMixer = mixer;
 
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
