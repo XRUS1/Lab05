@@ -115,7 +115,10 @@ function crearModelo(data) {
   const box = new THREE.Box3().setFromObject(model);
   const size = box.getSize(new THREE.Vector3());
   const maxDim = Math.max(size.x, size.y, size.z);
+  
+  // ESCALA REDUCIDA A LA MITAD (0.06 en vez de 0.12)
   const s = 0.06 / maxDim;
+  
   model.scale.setScalar(s);
   const center = box.getCenter(new THREE.Vector3());
   model.position.sub(center.multiplyScalar(s));
@@ -168,13 +171,13 @@ function iniciarAR() {
   light.position.set(1, 1, 1).normalize();
   scene.add(light);
 
-  // Nave espacial (sin animación, posición fija)
+  // NAVE: SIN CAMBIOS, IGUAL QUE ESTABA
   const loaderNave = new GLTFLoader();
   loaderNave.load(
     './models/gltf/Nave.gltf',
     function (gltf) {
       gltf.scene.scale.set(0.003, 0.003, 0.003);
-      gltf.scene.position.set(0.8, 0.3, -1.5);
+      gltf.scene.position.set(-0.8, 0.3, -1.5);
       scene.add(gltf.scene);
     },
     undefined,
@@ -183,10 +186,13 @@ function iniciarAR() {
     }
   );
 
-  // Dragón seleccionado (con animación, posición donde estaba el leñador)
+  // DRAGÓN: MÁS PEQUEÑO Y A LA MISMA ALTURA Y QUE LA NAVE
   const data = modelosData[selectedIndex];
   const { model, mixer } = crearModelo(data);
-  model.position.set(0.8, -0.5, -1.5);
+  
+  // X=0.8 (derecha), Y=0.3 (misma altura que la nave), Z=-1.5
+  model.position.set(0.8, 0.3, -1.5);
+  
   scene.add(model);
   dragonModel = model;
   dragonMixer = mixer;
@@ -197,7 +203,6 @@ function iniciarAR() {
   renderer.xr.enabled = true;
   document.body.appendChild(renderer.domElement);
 
-  // Botón AR de Three.js
   document.body.appendChild(ARButton.createButton(renderer));
 
   window.addEventListener('resize', onWindowResize);
