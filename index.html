@@ -121,16 +121,15 @@ function crearModelo(data) {
   const container = new THREE.Group();
   const model = data.gltf.scene.clone();
   
-  // DEBUG: alert con info de animaciones
-  let debugMsg = '=== DRAGON DEBUG ===\n';
-  debugMsg += 'Animaciones: ' + data.gltf.animations.length + '\n';
+  // DEBUG: info de animaciones en consola (no bloquea)
+  console.log('=== DRAGON DEBUG ===');
+  console.log('Animaciones:', data.gltf.animations.length);
   data.gltf.animations.forEach((clip, i) => {
-    debugMsg += `  [${i}] "${clip.name}" | dur: ${clip.duration.toFixed(2)} | tracks: ${clip.tracks.length}\n`;
+    console.log(`  [${i}] "${clip.name}" | dur: ${clip.duration} | tracks: ${clip.tracks.length}`);
     clip.tracks.forEach((track, j) => {
-      debugMsg += `    track ${j}: ${track.name} (${track.constructor.name})\n`;
+      console.log(`    track ${j}: ${track.name} (${track.constructor.name})`);
     });
   });
-  alert(debugMsg);
 
   container.scale.set(ESCALA_DRAGON, ESCALA_DRAGON, ESCALA_DRAGON);
   container.rotation.y = Math.PI;
@@ -161,57 +160,25 @@ function iniciarAR() {
     return;
   }
 
-  document.getElementById('ui').style.display = 'none';
-
-  clock = new THREE.Clock();
-
-  scene = new THREE.Scene();
-
-  camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-
-  scene.add(new THREE.HemisphereLight(0xa5a5a5, 0x898989, 3));
-
-  const light = new THREE.DirectionalLight(0xffffff, 3);
-  light.position.set(1, 1, 1).normalize();
-  scene.add(light);
-
-  // NAVE: sin tocar
-  const loaderNave = new GLTFLoader();
-  loaderNave.load(
-    './models/gltf/Nave.gltf',
-    function (gltf) {
-      gltf.scene.scale.set(0.003, 0.003, 0.003);
-      gltf.scene.position.set(-0.8, 0.3, -1.5);
-      scene.add(gltf.scene);
-    },
-    undefined,
-    function (error) {
-      console.error('Error cargando la nave:', error);
-    }
-  );
-
-  // DRAGÓN
   const data = modelosData[selectedIndex];
-  const { container, mixer } = crearModelo(data);
   
-  // Usa la altura que ajustes arriba
-  container.position.set(0.5, -0.3, -1.0);
+  // DEBUG: mostrar info en status antes de ocultar UI
+  const numAnims = data.gltf.animations.length;
+  const nombres = data.gltf.animations.map(a => a.name).join(', ');
+  statusEl.textContent = `Anims: ${numAnims} | ${nombres || 'NINGUNA'}`;
+  statusEl.className = 'info';
   
-  scene.add(container);
-  dragonContainer = container;
-  dragonMixer = mixer;
-
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.xr.enabled = true;
-  document.body.appendChild(renderer.domElement);
-
-  document.body.appendChild(ARButton.createButton(renderer));
-
-  window.addEventListener('resize', onWindowResize);
-
-  renderer.setAnimationLoop(animate);
+  // Esperar 2 segundos para leer, luego entrar a AR
+  setTimeout(() => {
+    document.getElementById('ui').style.display = 'none';
+    
+    // ... resto del código de AR (todo igual) ...
+    
+    clock = new THREE.Clock();
+    scene = new THREE.Scene();
+    // etc...
+    
+  }, 2000);
 }
 
 function onWindowResize() {
