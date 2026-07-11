@@ -50,10 +50,10 @@ import { ARButton } from 'three/addons/webxr/ARButton.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 // ============================================================
-// AJUSTES RÁPIDOS — SOLO CAMBIA ESTOS DOS NÚMEROS
+// AJUSTES RÁPIDOS
 // ============================================================
-const ESCALA_DRAGON = 1.0;   // SI ESTÁ MUY GRANDE: 0.005, 0.001, 0.0005
-const ALTURA_DRAGON = -0.3;    // SI ESTÁ ARRIBA EN EL TECHO: -0.5, -1.0, -1.5
+const ESCALA_DRAGON = 1.0;
+const ALTURA_DRAGON = -0.3;
 // ============================================================
 
 const TARGETS = [
@@ -121,7 +121,6 @@ function crearModelo(data) {
   const container = new THREE.Group();
   const model = data.gltf.scene.clone();
   
-  // DEBUG: info de animaciones en consola (no bloquea)
   console.log('=== DRAGON DEBUG ===');
   console.log('Animaciones:', data.gltf.animations.length);
   data.gltf.animations.forEach((clip, i) => {
@@ -150,7 +149,21 @@ function crearModelo(data) {
   
   return { container, mixer, model };
 }
- 
+
+async function init() {
+  try {
+    statusEl.textContent = 'Cargando tarjetas...';
+    await cargarTarjetas();
+    statusEl.textContent = 'Descargando modelos...';
+    modelosData = await cargarModelos();
+    statusEl.textContent = 'Listo. Selecciona un dragón.';
+    statusEl.className = 'info';
+  } catch (err) {
+    statusEl.textContent = 'Error: ' + err.message;
+    statusEl.className = 'err';
+    console.error(err);
+  }
+}
 init();
 
 function iniciarAR() {
@@ -162,7 +175,7 @@ function iniciarAR() {
 
   const data = modelosData[selectedIndex];
   
-  // DEBUG: mostrar info en status antes de ocultar UI
+  // DEBUG: mostrar info en status
   const numAnims = data.gltf.animations.length;
   const nombres = data.gltf.animations.map(a => a.name).join(', ');
   statusEl.textContent = `Anims: ${numAnims} | ${nombres || 'NINGUNA'}`;
@@ -171,12 +184,50 @@ function iniciarAR() {
   // Esperar 2 segundos para leer, luego entrar a AR
   setTimeout(() => {
     document.getElementById('ui').style.display = 'none';
-    
-    // ... resto del código de AR (todo igual) ...
-    
+
     clock = new THREE.Clock();
     scene = new THREE.Scene();
-    // etc...
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+
+    scene.add(new THREE.HemisphereLight(0xa5a5a5, 0x898989, 3));
+
+    const light = new THREE.DirectionalLight(0xffffff, 3);
+    light.position.set(1, 1, 1).normalize();
+    scene.add(light);
+
+    // NAVE
+    const loaderNave = new GLTFLoader();
+    loaderNave.load(
+      './models/gltf/Nave.gltf',
+      function (gltf) {
+        gltf.scene.scale.set(0.003, 0.003, 0.003);
+        gltf.scene.position.set(-0.8, 0.3, -1.5);
+        scene.add(gltf.scene);
+      },
+      undefined,
+      function (error) {
+        console.error('Error cargando la nave:', error);
+      }
+    );
+
+    // DRAGÓN
+    const { container, mixer } = crearModelo(data);
+    container.position.set(2.0, ALTURA_DRAGON, -1.5);
+    scene.add(container);
+    dragonContainer = container;
+    dragonMixer = mixer;
+
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    document.body.appendChild(ARButton.createButton(renderer));
+
+    window.addEventListener('resize', onWindowResize);
+
+    renderer.setAnimationLoop(animate);
     
   }, 2000);
 }
