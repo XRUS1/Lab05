@@ -159,12 +159,12 @@ async function init() {
     statusEl.textContent = 'Listo. Selecciona un dragón.';
     statusEl.className = 'info';
   } catch (err) {
-    statusEl.textContent = 'Error: ' + err.message;
+    statusEl.textContent = 'ERROR: ' + err.message;
     statusEl.className = 'err';
-    console.error(err);
+    console.error('INIT ERROR:', err);
+    alert('ERROR AL CARGAR: ' + err.message);  // temporal para ver en móvil
   }
-}
-init();
+}init();
 
 function iniciarAR() {
   if (selectedIndex < 0) {
