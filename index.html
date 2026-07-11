@@ -52,8 +52,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // ============================================================
 // AJUSTES RÁPIDOS
 // ============================================================
-const ESCALA_DRAGON = 1.0;
-const ALTURA_DRAGON = -0.3;
+const ESCALA_DRAGON = 1.5;
+const ALTURA_DRAGON = 0 ;
 // ============================================================
 
 const TARGETS = [
@@ -119,13 +119,12 @@ function cargarModelos() {
 
 function crearModelo(data) {
   const container = new THREE.Group();
-  
-  // SIN CLONAR — usar el modelo directo como el leñador FBX
-  // Cada dragón tiene su propio GLB cargado, no hay conflicto
   const model = data.gltf.scene;
   
   container.scale.set(ESCALA_DRAGON, ESCALA_DRAGON, ESCALA_DRAGON);
-  container.rotation.y = Math.PI;
+  
+  // GIRO: 0 en vez de Math.PI para que mire hacia ti
+  container.rotation.y = 0;
 
   const box = new THREE.Box3().setFromObject(model);
   const center = box.getCenter(new THREE.Vector3());
@@ -135,12 +134,9 @@ function crearModelo(data) {
 
   let mixer = null;
   if (data.gltf.animations && data.gltf.animations.length > 0) {
-    // Mixer sobre el modelo directo, igual que el leñador
     mixer = new THREE.AnimationMixer(model);
-    
     let clip = data.gltf.animations.find(a => a.name === data.animacionBuscada);
     if (!clip) clip = data.gltf.animations[0];
-    
     mixer.clipAction(clip).play();
   }
   
@@ -206,9 +202,9 @@ function iniciarAR() {
       }
     );
 
-    // DRAGÓN — sin clonar, directo
+    // DRAGÓN
     const { container, mixer } = crearModelo(data);
-    container.position.set(2.0, ALTURA_DRAGON, -1.5);
+    container.position.set(1.0, ALTURA_DRAGON, -1.5);
     scene.add(container);
     dragonContainer = container;
     dragonMixer = mixer;
