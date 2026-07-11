@@ -121,15 +121,6 @@ function crearModelo(data) {
   const container = new THREE.Group();
   const model = data.gltf.scene.clone();
   
-  console.log('=== DRAGON DEBUG ===');
-  console.log('Animaciones:', data.gltf.animations.length);
-  data.gltf.animations.forEach((clip, i) => {
-    console.log(`  [${i}] "${clip.name}" | dur: ${clip.duration} | tracks: ${clip.tracks.length}`);
-    clip.tracks.forEach((track, j) => {
-      console.log(`    track ${j}: ${track.name} (${track.constructor.name})`);
-    });
-  });
-
   container.scale.set(ESCALA_DRAGON, ESCALA_DRAGON, ESCALA_DRAGON);
   container.rotation.y = Math.PI;
 
@@ -141,14 +132,18 @@ function crearModelo(data) {
 
   let mixer = null;
   if (data.gltf.animations && data.gltf.animations.length > 0) {
-    mixer = new THREE.AnimationMixer(model);
-    const clip = data.gltf.animations[0];
-    const action = mixer.clipAction(clip);
-    action.play();
+    // MIXER SOBRE CONTAINER, NO SOBRE MODEL
+    mixer = new THREE.AnimationMixer(container);
+    
+    let clip = data.gltf.animations.find(a => a.name === data.animacionBuscada);
+    if (!clip) clip = data.gltf.animations[0];
+    
+    mixer.clipAction(clip).play();
   }
   
   return { container, mixer, model };
 }
+
 
 async function init() {
   try {
