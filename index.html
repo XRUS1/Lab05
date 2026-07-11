@@ -57,8 +57,8 @@ const ALTURA_DRAGON = 0 ;
 // ============================================================
 
 const TARGETS = [
-  { nombre: 'Dragon Azul', tarjeta: './images/tarjeta.png', modelo: './models/Blue.glb', animacion: 'FlyIdle' },
-  { nombre: 'Dragon Rojo', tarjeta: './images/tarjeta2.png', modelo: './models/Red.glb', animacion: 'Idle01' }
+  { nombre: 'Dragon Azul', tarjeta: './images/tarjeta.png', modelo: './models/Blue.glb', animacion: 9 },   // FlyIdle = índice 9
+  { nombre: 'Dragon Rojo', tarjeta: './images/tarjeta2.png', modelo: './models/Red.glb', animacion: 0 }    // Idle01 = índice 0
 ];
 
 const btnAR = document.getElementById('btnAR');
@@ -122,8 +122,6 @@ function crearModelo(data) {
   const model = data.gltf.scene;
   
   container.scale.set(ESCALA_DRAGON, ESCALA_DRAGON, ESCALA_DRAGON);
-  
-  // GIRO: 0 en vez de Math.PI para que mire hacia ti
   container.rotation.y = 0;
 
   const box = new THREE.Box3().setFromObject(model);
@@ -135,8 +133,12 @@ function crearModelo(data) {
   let mixer = null;
   if (data.gltf.animations && data.gltf.animations.length > 0) {
     mixer = new THREE.AnimationMixer(model);
-    let clip = data.gltf.animations.find(a => a.name === data.animacionBuscada);
-    if (!clip) clip = data.gltf.animations[0];
+    
+    // USAR ÍNDICE NUMÉRICO
+    const indice = data.animacionBuscada;  // 0, 9, etc.
+    const clip = data.gltf.animations[indice] || data.gltf.animations[0];
+    
+    console.log('Reproduciendo índice:', indice, 'nombre:', clip.name);
     mixer.clipAction(clip).play();
   }
   
