@@ -48,6 +48,7 @@
 import * as THREE from 'three';
 import { ARButton } from 'three/addons/webxr/ARButton.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { SkeletonUtils } from 'three/addons/utils/SkeletonUtils.js';
 
 // ============================================================
 // AJUSTES RÁPIDOS
@@ -119,7 +120,9 @@ function cargarModelos() {
 
 function crearModelo(data) {
   const container = new THREE.Group();
-  const model = data.gltf.scene;  // SIN .clone()
+  
+  // SkeletonUtils.clone respeta el esqueleto y las animaciones
+  const model = SkeletonUtils.clone(data.gltf.scene);
   
   container.scale.set(ESCALA_DRAGON, ESCALA_DRAGON, ESCALA_DRAGON);
   container.rotation.y = Math.PI;
@@ -133,14 +136,15 @@ function crearModelo(data) {
   let mixer = null;
   if (data.gltf.animations && data.gltf.animations.length > 0) {
     mixer = new THREE.AnimationMixer(model);
+    
     let clip = data.gltf.animations.find(a => a.name === data.animacionBuscada);
     if (!clip) clip = data.gltf.animations[0];
+    
     mixer.clipAction(clip).play();
   }
   
   return { container, mixer, model };
 }
-
 
 async function init() {
   try {
@@ -151,12 +155,12 @@ async function init() {
     statusEl.textContent = 'Listo. Selecciona un dragón.';
     statusEl.className = 'info';
   } catch (err) {
-    statusEl.textContent = 'ERROR: ' + err.message;
+    statusEl.textContent = 'Error: ' + err.message;
     statusEl.className = 'err';
-    console.error('INIT ERROR:', err);
-    alert('ERROR AL CARGAR: ' + err.message);  // temporal para ver en móvil
+    console.error(err);
   }
-}init();
+}
+init();
 
 function iniciarAR() {
   if (selectedIndex < 0) {
@@ -176,8 +180,7 @@ function iniciarAR() {
   // Esperar a que toque el botón
   document.getElementById('btnContinuar').addEventListener('click', () => {
     document.getElementById('ui').style.display = 'none';
-    
-    // AQUÍ EMPIEZA AR
+
     clock = new THREE.Clock();
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
