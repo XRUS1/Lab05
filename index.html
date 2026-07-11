@@ -175,16 +175,17 @@ function iniciarAR() {
 
   const data = modelosData[selectedIndex];
   
-  // DEBUG: mostrar info en status
-  const numAnims = data.gltf.animations.length;
-  const nombres = data.gltf.animations.map(a => a.name).join(', ');
-  statusEl.textContent = `Anims: ${numAnims} | ${nombres || 'NINGUNA'}`;
+  // DEBUG: mostrar info de animaciones
+  const primeraAnim = data.gltf.animations[0];
+  const nombrePrimera = primeraAnim ? primeraAnim.name : 'NINGUNA';
+  statusEl.innerHTML = `Anim[0]: "${nombrePrimera}"<br>Total: ${data.gltf.animations.length}<br><br><button id="btnContinuar" style="padding:10px 20px;font-size:16px;background:#50a8fc;color:#000;border:none;border-radius:6px;cursor:pointer;">CONTINUAR</button>`;
   statusEl.className = 'info';
   
-  // Esperar 2 segundos para leer, luego entrar a AR
-  setTimeout(() => {
+  // Esperar a que toque el botón
+  document.getElementById('btnContinuar').addEventListener('click', () => {
     document.getElementById('ui').style.display = 'none';
-
+    
+    // AQUÍ EMPIEZA AR
     clock = new THREE.Clock();
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
@@ -228,8 +229,7 @@ function iniciarAR() {
     window.addEventListener('resize', onWindowResize);
 
     renderer.setAnimationLoop(animate);
-    
-  }, 2000);
+  });
 }
 
 function onWindowResize() {
