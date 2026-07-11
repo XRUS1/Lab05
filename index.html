@@ -119,7 +119,7 @@ function cargarModelos() {
 
 function crearModelo(data) {
   const container = new THREE.Group();
-  const model = data.gltf.scene.clone();
+  const model = data.gltf.scene;  // SIN .clone()
   
   container.scale.set(ESCALA_DRAGON, ESCALA_DRAGON, ESCALA_DRAGON);
   container.rotation.y = Math.PI;
@@ -132,12 +132,9 @@ function crearModelo(data) {
 
   let mixer = null;
   if (data.gltf.animations && data.gltf.animations.length > 0) {
-    // MIXER SOBRE CONTAINER, NO SOBRE MODEL
-    mixer = new THREE.AnimationMixer(container);
-    
+    mixer = new THREE.AnimationMixer(model);
     let clip = data.gltf.animations.find(a => a.name === data.animacionBuscada);
     if (!clip) clip = data.gltf.animations[0];
-    
     mixer.clipAction(clip).play();
   }
   
