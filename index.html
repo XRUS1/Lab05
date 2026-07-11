@@ -121,6 +121,17 @@ function crearModelo(data) {
   const container = new THREE.Group();
   const model = data.gltf.scene.clone();
   
+  // DEBUG: alert con info de animaciones
+  let debugMsg = '=== DRAGON DEBUG ===\n';
+  debugMsg += 'Animaciones: ' + data.gltf.animations.length + '\n';
+  data.gltf.animations.forEach((clip, i) => {
+    debugMsg += `  [${i}] "${clip.name}" | dur: ${clip.duration.toFixed(2)} | tracks: ${clip.tracks.length}\n`;
+    clip.tracks.forEach((track, j) => {
+      debugMsg += `    track ${j}: ${track.name} (${track.constructor.name})\n`;
+    });
+  });
+  alert(debugMsg);
+
   container.scale.set(ESCALA_DRAGON, ESCALA_DRAGON, ESCALA_DRAGON);
   container.rotation.y = Math.PI;
 
@@ -133,28 +144,14 @@ function crearModelo(data) {
   let mixer = null;
   if (data.gltf.animations && data.gltf.animations.length > 0) {
     mixer = new THREE.AnimationMixer(model);
-    let clip = data.gltf.animations.find(a => a.name === data.animacionBuscada);
-    if (!clip) clip = data.gltf.animations[0];
-    mixer.clipAction(clip).play();
+    const clip = data.gltf.animations[0];
+    const action = mixer.clipAction(clip);
+    action.play();
   }
   
   return { container, mixer, model };
 }
-
-async function init() {
-  try {
-    statusEl.textContent = 'Cargando tarjetas...';
-    await cargarTarjetas();
-    statusEl.textContent = 'Descargando modelos...';
-    modelosData = await cargarModelos();
-    statusEl.textContent = 'Listo. Selecciona un dragón.';
-    statusEl.className = 'info';
-  } catch (err) {
-    statusEl.textContent = 'Error: ' + err.message;
-    statusEl.className = 'err';
-    console.error(err);
-  }
-}
+ 
 init();
 
 function iniciarAR() {
